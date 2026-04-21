@@ -1,0 +1,101 @@
+server:
+  servlet:
+    context-path: ${SERVER_CONTEXT_PATH:/api}
+
+spring:
+  application:
+    name: ${SPRING_APPLICATION_NAME:wibusystem}
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/postgres}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    driver-class-name: ${SPRING_DATASOURCE_DRIVER:org.postgresql.Driver}
+
+  jpa:
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
+    open-in-view: ${SPRING_JPA_OPEN_IN_VIEW:false}
+    properties:
+      hibernate:
+        format_sql: ${SPRING_JPA_FORMAT_SQL:true}
+    show-sql: ${SPRING_JPA_SHOW_SQL:false}
+
+  autoconfigure:
+    exclude:
+      # Tắt Redis repository scanning — project chỉ dùng JPA, không có @RedisHash entity
+      # IDE có thể báo warning nhưng hoạt động đúng ở runtime
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+
+  # spring.data.redis trỏ về session Redis — auto-config back off vì RedisConfig đã define @Primary bean
+  data:
+    redis:
+      host: ${REDIS_SESSION_HOST:localhost}
+      port: ${REDIS_SESSION_PORT:6379}
+      password: ${REDIS_SESSION_PASSWORD:wibusystem_redis}
+      database: ${REDIS_SESSION_DATABASE:0}
+
+  messages:
+    basename: >-
+      i18n/common/messages,
+      i18n/auth/messages,
+      i18n/user/messages,
+      i18n/rbac/messages
+    encoding: UTF-8
+
+app:
+  redis:
+    session:
+      host: ${REDIS_SESSION_HOST:localhost}
+      port: ${REDIS_SESSION_PORT:6379}
+      password: ${REDIS_SESSION_PASSWORD:wibusystem_redis}
+      database: ${REDIS_SESSION_DATABASE:0}
+      pool:
+        max-active: ${REDIS_SESSION_POOL_MAX_ACTIVE:10}
+        max-idle: ${REDIS_SESSION_POOL_MAX_IDLE:5}
+        min-idle: ${REDIS_SESSION_POOL_MIN_IDLE:2}
+        max-wait: ${REDIS_SESSION_POOL_MAX_WAIT:1000ms}
+    cache:
+      host: ${REDIS_CACHE_HOST:localhost}
+      port: ${REDIS_CACHE_PORT:6379}
+      password: ${REDIS_CACHE_PASSWORD:wibusystem_redis}
+      database: ${REDIS_CACHE_DATABASE:1}
+      pool:
+        max-active: ${REDIS_CACHE_POOL_MAX_ACTIVE:20}
+        max-idle: ${REDIS_CACHE_POOL_MAX_IDLE:10}
+        min-idle: ${REDIS_CACHE_POOL_MIN_IDLE:2}
+        max-wait: ${REDIS_CACHE_POOL_MAX_WAIT:500ms}
+    cache-ttl:
+      user-profile: ${CACHE_TTL_USER_PROFILE:1h}
+      creator-profile: ${CACHE_TTL_CREATOR_PROFILE:30m}
+
+  anonymous-session:
+    ttl: ${ANONYMOUS_SESSION_TTL:30d}
+    rate-limit-per-hour: ${ANONYMOUS_SESSION_RATE_LIMIT:5}
+    activity-threshold: ${ANONYMOUS_SESSION_ACTIVITY_THRESHOLD:3}
+
+  jwt:
+    secret: ${JWT_SECRET:jwt-secret}
+    access-token-expiry: ${JWT_ACCESS_TOKEN_EXPIRY:900}
+    refresh-token-expiry: ${JWT_REFRESH_TOKEN_EXPIRY:604800}
+
+  mail:
+    resend:
+      api-key: ${MAIL_RESEND_API_KEY:resend-api-key}
+      from: ${MAIL_RESEND_FROM:Wibusystem <onboarding@resend.dev>}
+
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+    allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:[]}
+    allowed-methods:
+      - GET
+      - POST
+      - PUT
+      - PATCH
+      - DELETE
+      - OPTIONS
+    allowed-headers:
+      - "*"
+    exposed-headers:
+      - Authorization
+    allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
+    max-age: ${CORS_MAX_AGE:1h}

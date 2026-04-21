@@ -1,0 +1,86 @@
+services:
+  wibusystem_db:
+    image: pgvector/pgvector:pg18
+    container_name: wibusystem_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: wibusystem_db
+      POSTGRES_USER: wibusystem_db
+      POSTGRES_PASSWORD: wibusystem_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - system_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wibusystem_db -d wibusystem_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - wibusystem_backend
+
+  # Redis — session store (db 0) + api cache (db 1)
+  # Prod: tách thành 2 instance riêng, mỗi instance chỉ dùng db 0
+  wibusystem_redis:
+    image: redis:8.2.1-alpine
+    container_name: wibusystem_redis
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --requirepass
+      - wibusystem_redis
+      - --databases
+      - "2"
+      # Memory: giới hạn 512MB, volatile-lru ưu tiên evict cache (TTL ngắn) trước session (TTL 30d)
+      - --maxmemory
+      - 512mb
+      - --maxmemory-policy
+      - volatile-lru
+      # Persistence: AOF cho session (db 0), cache (db 1) mất không sao
+      - --appendonly
+      - "yes"
+      - --appendfsync
+      - everysec
+      - --no-appendfsync-on-rewrite
+      - "yes"
+      - --auto-aof-rewrite-percentage
+      - "100"
+      - --auto-aof-rewrite-min-size
+      - 64mb
+      # Tắt RDB snapshot — AOF là đủ
+      - --save
+      - ""
+      # Async eviction/expiry để không block main thread
+      - --lazyfree-lazy-eviction
+      - "yes"
+      - --lazyfree-lazy-expire
+      - "yes"
+      - --lazyfree-lazy-server-del
+      - "yes"
+      # Đóng connection idle sau 5 phút
+      - --timeout
+      - "300"
+      - --tcp-keepalive
+      - "60"
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "wibusystem_redis", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - wibusystem_backend
+
+volumes:
+  system_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  wibusystem_backend:
+    driver: bridge
+    name: wibusystem-backend
