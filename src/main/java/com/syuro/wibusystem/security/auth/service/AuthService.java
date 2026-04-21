@@ -45,6 +45,7 @@ public class AuthService {
     private final TokenBlacklistService tokenBlacklistService;
     private final OtpService otpService;
     private final MailService mailService;
+    private final MagicLinkTokenService magicLinkTokenService;
 
     public RegisterResponse register(RegisterRequest request) {
         if (userQueryService.existsByEmail(request.getEmail())) {
@@ -141,6 +142,39 @@ public class AuthService {
                 user.id(), newSession.getId(), user.email(), user.name(), permissions);
 
         return new RefreshResponse(accessToken, rawRefreshToken, jwtProperties.accessTokenExpiry());
+    }
+
+    public MagicLinkSendResponse sendMagicLink(MagicLinkSendRequest request) {
+        accountQueryService.findCredentialByEmail(request.getEmail()).ifPresent(account -> {
+            UserProfile user = userQueryService.findProfileById(account.userId());
+            String token = generateRefreshToken();
+            magicLinkTokenService.store(token, user.id(), user.email());
+            mailService.sendMagicLinkEmail(user.email(), user.name(), request.getCallbackUrl() + "?token=" + token);
+        });
+        return new MagicLinkSendResponse("Nếu email của bạn đã đăng ký, bạn sẽ nhận được link đăng nhập.");
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public LoginResponse verifyMagicLink(MagicLinkVerifyRequest request, String userAgent, String ipAddress) {
+        MagicLinkPending pending = magicLinkTokenService.verifyAndConsume(request.getToken());
+
+        UserProfile user = userQueryService.findProfileById(pending.userId());
+        List<String> roles = permissionChecker.getGlobalRoleNames(user.id());
+        List<String> permissions = permissionChecker.getExpandedPermissions(user.id());
+
+        String rawRefreshToken = generateRefreshToken();
+        Session session = sessionRepository.save(Session.builder()
+                .userId(user.id())
+                .refreshTokenHash(hashToken(rawRefreshToken))
+                .deviceUserAgent(userAgent)
+                .ipAddress(ipAddress)
+                .expiresAt(Instant.now().plusSeconds(jwtProperties.refreshTokenExpiry()))
+                .build());
+
+        String accessToken = jwtService.generateAccessToken(
+                user.id(), session.getId(), user.email(), user.name(), permissions);
+
+        return new LoginResponse(accessToken, rawRefreshToken, jwtProperties.accessTokenExpiry(), user, roles, permissions);
     }
 
     private CredentialAccount resolveCredentialAccount(String identifier) {

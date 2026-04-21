@@ -44,6 +44,20 @@ public class AuthController {
         return ResponseEntity.ok(authService.refresh(request, userAgent, ip));
     }
 
+    @PostMapping("/magic-link/send")
+    public ResponseEntity<MagicLinkSendResponse> sendMagicLink(@Valid @RequestBody MagicLinkSendRequest request) {
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(authService.sendMagicLink(request));
+    }
+
+    @PostMapping("/magic-link/verify")
+    public ResponseEntity<LoginResponse> verifyMagicLink(
+            @Valid @RequestBody MagicLinkVerifyRequest request,
+            HttpServletRequest httpRequest) {
+        String userAgent = httpRequest.getHeader("User-Agent");
+        String ip = resolveClientIp(httpRequest);
+        return ResponseEntity.ok(authService.verifyMagicLink(request, userAgent, ip));
+    }
+
     private String resolveClientIp(HttpServletRequest request) {
         String forwarded = request.getHeader("X-Forwarded-For");
         if (forwarded != null && !forwarded.isBlank()) {

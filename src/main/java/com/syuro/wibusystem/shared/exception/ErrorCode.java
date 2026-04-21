@@ -12,6 +12,8 @@ public enum ErrorCode {
     SESSION_NOT_FOUND(HttpStatus.NOT_FOUND),
     OTP_INVALID(HttpStatus.BAD_REQUEST),
     OTP_EXPIRED(HttpStatus.GONE),
+    MAGIC_LINK_INVALID(HttpStatus.UNAUTHORIZED),
+    MAGIC_LINK_EXPIRED(HttpStatus.GONE),
 
     // user
     USER_NOT_FOUND(HttpStatus.NOT_FOUND),
