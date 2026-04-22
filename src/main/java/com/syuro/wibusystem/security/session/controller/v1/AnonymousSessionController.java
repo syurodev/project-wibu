@@ -22,8 +22,6 @@ public class AnonymousSessionController {
     /**
      * Tạo hoặc gia hạn anonymous session.
      * Client gọi khi lần đầu truy cập; lưu session_token trả về vào localStorage/cookie.
-     * Đính kèm token vào header "X-Session-Token" cho các request tiếp theo.
-     * <p>
      * Cùng fingerprint thiết bị → trả lại token cũ (idempotent).
      */
     @PostMapping("/anonymous")

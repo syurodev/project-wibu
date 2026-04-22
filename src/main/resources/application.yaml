@@ -5,6 +5,8 @@ server:
 spring:
   application:
     name: ${SPRING_APPLICATION_NAME:wibusystem}
+  jackson:
+    property-naming-strategy: SNAKE_CASE
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/postgres}
     username: ${SPRING_DATASOURCE_USERNAME:postgres}
@@ -82,6 +84,12 @@ app:
     resend:
       api-key: ${MAIL_RESEND_API_KEY:resend-api-key}
       from: ${MAIL_RESEND_FROM:Wibusystem <onboarding@resend.dev>}
+
+  passkey:
+    rp-id: ${PASSKEY_RP_ID:localhost}
+    rp-name: ${PASSKEY_RP_NAME:WibuSystem}
+    origins: ${PASSKEY_ORIGINS:http://localhost:3000}
+    challenge-ttl-seconds: ${PASSKEY_CHALLENGE_TTL:300}
 
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}

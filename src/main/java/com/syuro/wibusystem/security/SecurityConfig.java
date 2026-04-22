@@ -44,9 +44,18 @@ public class SecurityConfig {
                 // Không dùng session phía server
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Các endpoint công khai: đăng ký, đăng nhập, refresh, swagger
-                        .requestMatchers("/v1/auth/**", "/v1/sessions/anonymous", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                        // Tất cả các endpoint còn lại yêu cầu xác thực
+                        // Passkey register/credentials cần JWT — khai báo trước rule permitAll bên dưới
+                        .requestMatchers(
+                                "/v1/auth/passkey/register/**",
+                                "/v1/auth/passkey/credentials/**"
+                        ).authenticated()
+                        // Endpoint công khai: auth chung, passkey authenticate, swagger
+                        .requestMatchers(
+                                "/v1/auth/**",
+                                "/v1/sessions/anonymous",
+                                "/swagger-ui/**",
+                                "/v3/api-docs/**"
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
                 // Đặt JwtAuthFilter trước filter xác thực mặc định

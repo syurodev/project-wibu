@@ -37,6 +37,12 @@ dependencies {
     // mail
     implementation("com.resend:resend-java:+")
 
+    // passkey / WebAuthn
+    implementation("com.yubico:webauthn-server-core:2.6.0")
+    // Yubico khai báo checked exception từ Jackson 2.x trong method signature của toJson()/fromJson()
+    // Spring Boot 4.x dùng Jackson 3.x (tools.jackson), cần khai báo explicit để compiler resolve được
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.18.2")
+
 
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.13.0")
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.13.0")

@@ -1,6 +1,5 @@
 package com.syuro.wibusystem.security.auth.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
@@ -16,6 +15,5 @@ public class MagicLinkSendRequest {
 
     @NotBlank(message = "{VALIDATION.FIELD.REQUIRED}")
     @URL(message = "{VALIDATION.URL.INVALID}")
-    @JsonProperty("callback_url")
     private String callbackUrl;
 }
