@@ -1,7 +1,7 @@
 package com.syuro.wibusystem.security;
 
-import com.syuro.wibusystem.security.jwt.JwtAuthFilter;
-import com.syuro.wibusystem.security.jwt.JwtProperties;
+import com.syuro.wibusystem.security.session.config.SessionProperties;
+import com.syuro.wibusystem.security.session.filter.SessionAuthFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -18,21 +18,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
-/**
- * Cấu hình Spring Security cho toàn bộ ứng dụng.
- *
- * Chiến lược xác thực:
- *   - STATELESS: server không lưu session, mỗi request phải mang JWT theo
- *   - CSRF disabled: không cần thiết cho REST API dùng token
- *   - JwtAuthFilter chạy trước UsernamePasswordAuthenticationFilter để xử lý Bearer token
- */
 @Configuration
 @EnableWebSecurity
-@EnableConfigurationProperties(JwtProperties.class) // kích hoạt binding app.jwt.* → JwtProperties
+@EnableConfigurationProperties(SessionProperties.class)
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final JwtAuthFilter jwtAuthFilter;
+    private final SessionAuthFilter sessionAuthFilter;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -58,24 +50,15 @@ public class SecurityConfig {
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
-                // Đặt JwtAuthFilter trước filter xác thực mặc định
-                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(sessionAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 
-    /**
-     * BCrypt encoder để hash mật khẩu khi đăng ký và verify khi đăng nhập.
-     * Cost factor mặc định là 10 — đủ mạnh cho hầu hết ứng dụng.
-     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    /**
-     * Expose AuthenticationManager như một bean để AuthService có thể inject nếu cần
-     * (ví dụ: xác thực thủ công qua UsernamePasswordAuthenticationToken).
-     */
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();

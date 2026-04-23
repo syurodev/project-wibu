@@ -4,9 +4,9 @@ import com.syuro.wibusystem.user.api.UserProfile;
 
 import java.util.List;
 
-public record LoginResponse(
-        String sessionToken,
+public record SessionResponse(
         String sessionData,
+        String sessionToken,
         long expiresIn,
         UserProfile user,
         List<String> roles,

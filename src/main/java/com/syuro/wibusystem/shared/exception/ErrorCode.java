@@ -27,7 +27,20 @@ public enum ErrorCode {
     ROLE_NOT_FOUND(HttpStatus.NOT_FOUND),
     ORG_ROLE_NOT_FOUND(HttpStatus.NOT_FOUND),
 
+    // master data — genre
+    GENRE_NOT_FOUND(HttpStatus.NOT_FOUND),
+    GENRE_SLUG_CONFLICT(HttpStatus.CONFLICT),
+
+    // master data — organization
+    ORGANIZATION_NOT_FOUND(HttpStatus.NOT_FOUND),
+    ORGANIZATION_SLUG_CONFLICT(HttpStatus.CONFLICT),
+
+    // master data — people
+    PEOPLE_NOT_FOUND(HttpStatus.NOT_FOUND),
+    PEOPLE_SLUG_CONFLICT(HttpStatus.CONFLICT),
+
     // common
+    FORBIDDEN(HttpStatus.FORBIDDEN),
     VALIDATION_FAILED(HttpStatus.BAD_REQUEST),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR);
 

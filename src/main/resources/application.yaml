@@ -75,10 +75,13 @@ app:
     rate-limit-per-hour: ${ANONYMOUS_SESSION_RATE_LIMIT:5}
     activity-threshold: ${ANONYMOUS_SESSION_ACTIVITY_THRESHOLD:3}
 
-  jwt:
-    secret: ${JWT_SECRET:jwt-secret}
-    access-token-expiry: ${JWT_ACCESS_TOKEN_EXPIRY:900}
-    refresh-token-expiry: ${JWT_REFRESH_TOKEN_EXPIRY:604800}
+  session:
+    secrets:
+      - ${SESSION_SECRET_PRIMARY:your-primary-secret-min-32-chars-here}
+      - ${SESSION_SECRET_OLD:}
+    expires-in: ${SESSION_EXPIRES_IN:604800}
+    update-age: ${SESSION_UPDATE_AGE:86400}
+    cache-ttl: ${SESSION_CACHE_TTL:300}
 
   mail:
     resend:
@@ -104,6 +107,6 @@ app:
     allowed-headers:
       - "*"
     exposed-headers:
-      - Authorization
+      - X-New-Session-Cache
     allow-credentials: ${CORS_ALLOW_CREDENTIALS:true}
     max-age: ${CORS_MAX_AGE:1h}

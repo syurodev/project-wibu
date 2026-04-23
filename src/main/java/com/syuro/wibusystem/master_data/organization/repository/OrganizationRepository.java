@@ -1,0 +1,12 @@
+package com.syuro.wibusystem.master_data.organization.repository;
+
+import com.syuro.wibusystem.master_data.organization.entity.Organization;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+public interface OrganizationRepository extends JpaRepository<Organization, Long> {
+    Optional<Organization> findBySlug(String slug);
+    boolean existsBySlug(String slug);
+    boolean existsBySlugAndIdNot(String slug, Long id);
+}

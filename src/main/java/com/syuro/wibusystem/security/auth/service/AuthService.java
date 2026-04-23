@@ -5,11 +5,13 @@ import com.syuro.wibusystem.rbac.api.GlobalRoleName;
 import com.syuro.wibusystem.rbac.api.PermissionChecker;
 import com.syuro.wibusystem.rbac.api.RbacCommandService;
 import com.syuro.wibusystem.security.auth.dto.*;
+import com.syuro.wibusystem.security.rsa.RsaKeyService;
+import com.syuro.wibusystem.security.session.config.SessionProperties;
+import com.syuro.wibusystem.security.session.dto.SessionCachePayload;
 import com.syuro.wibusystem.security.session.entity.Session;
 import com.syuro.wibusystem.security.session.repository.SessionRepository;
-import com.syuro.wibusystem.security.jwt.JwtProperties;
-import com.syuro.wibusystem.security.jwt.JwtService;
-import com.syuro.wibusystem.security.jwt.TokenBlacklistService;
+import com.syuro.wibusystem.security.session.service.SessionExtendService;
+import com.syuro.wibusystem.security.session.service.SessionTokenService;
 import com.syuro.wibusystem.shared.exception.AppException;
 import com.syuro.wibusystem.shared.exception.ErrorCode;
 import com.syuro.wibusystem.shared.id.SnowflakeGenerator;
@@ -22,10 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.security.SecureRandom;
-import java.time.Duration;
 import java.time.Instant;
-import java.util.Base64;
 import java.util.HexFormat;
 import java.util.List;
 
@@ -39,10 +38,11 @@ public class AuthService {
     private final RbacCommandService rbacCommandService;
     private final PermissionChecker permissionChecker;
     private final SessionRepository sessionRepository;
-    private final JwtService jwtService;
-    private final JwtProperties jwtProperties;
+    private final SessionTokenService tokenService;
+    private final SessionProperties sessionProps;
+    private final SessionExtendService sessionExtendService;
+    private final RsaKeyService rsaKeyService;
     private final PasswordEncoder passwordEncoder;
-    private final TokenBlacklistService tokenBlacklistService;
     private final OtpService otpService;
     private final MailService mailService;
     private final MagicLinkTokenService magicLinkTokenService;
@@ -89,65 +89,18 @@ public class AuthService {
     public LoginResponse login(LoginRequest request, String userAgent, String ipAddress) {
         CredentialAccount account = resolveCredentialAccount(request.getIdentifier());
 
-        if (!passwordEncoder.matches(request.getPassword(), account.passwordHash())) {
+        String plainPassword = rsaKeyService.decrypt(request.getPassword());
+        if (!passwordEncoder.matches(plainPassword, account.passwordHash())) {
             throw new AppException(ErrorCode.INVALID_CREDENTIALS);
         }
 
-        UserProfile user = userQueryService.findProfileById(account.userId());
-        List<String> roles = permissionChecker.getGlobalRoleNames(user.id());
-        List<String> permissions = permissionChecker.getExpandedPermissions(user.id());
-
-        String rawRefreshToken = generateRefreshToken();
-        Session session = sessionRepository.save(Session.builder()
-                .userId(user.id())
-                .refreshTokenHash(hashToken(rawRefreshToken))
-                .deviceUserAgent(userAgent)
-                .ipAddress(ipAddress)
-                .expiresAt(Instant.now().plusSeconds(jwtProperties.refreshTokenExpiry()))
-                .build());
-
-        String accessToken = jwtService.generateAccessToken(
-                user.id(), session.getId(), user.email(), user.name(), permissions);
-
-        return new LoginResponse(accessToken, rawRefreshToken, jwtProperties.accessTokenExpiry(), user, roles, permissions);
-    }
-
-    @Transactional(rollbackFor = Exception.class)
-    public RefreshResponse refresh(RefreshRequest request, String userAgent, String ipAddress) {
-        String hash = hashToken(request.getRefreshToken());
-
-        Session old = sessionRepository.findByRefreshTokenHash(hash)
-                .orElseThrow(() -> new AppException(ErrorCode.REFRESH_TOKEN_INVALID));
-
-        if (old.getRevokedAt() != null || old.getExpiresAt().isBefore(Instant.now())) {
-            throw new AppException(ErrorCode.REFRESH_TOKEN_INVALID);
-        }
-
-        old.setRevokedAt(Instant.now());
-        tokenBlacklistService.blacklist(old.getId(), Duration.ofSeconds(jwtProperties.accessTokenExpiry()));
-
-        UserSummary user = userQueryService.findById(old.getUserId());
-        List<String> permissions = permissionChecker.getExpandedPermissions(user.id());
-
-        String rawRefreshToken = generateRefreshToken();
-        Session newSession = sessionRepository.save(Session.builder()
-                .userId(user.id())
-                .refreshTokenHash(hashToken(rawRefreshToken))
-                .deviceUserAgent(userAgent)
-                .ipAddress(ipAddress)
-                .expiresAt(Instant.now().plusSeconds(jwtProperties.refreshTokenExpiry()))
-                .build());
-
-        String accessToken = jwtService.generateAccessToken(
-                user.id(), newSession.getId(), user.email(), user.name(), permissions);
-
-        return new RefreshResponse(accessToken, rawRefreshToken, jwtProperties.accessTokenExpiry());
+        return createSession(account.userId(), userAgent, ipAddress);
     }
 
     public MagicLinkSendResponse sendMagicLink(MagicLinkSendRequest request) {
         accountQueryService.findCredentialByEmail(request.getEmail()).ifPresent(account -> {
             UserProfile user = userQueryService.findProfileById(account.userId());
-            String token = generateRefreshToken();
+            String token = tokenService.generateRawToken();
             magicLinkTokenService.store(token, user.id(), user.email());
             mailService.sendMagicLinkEmail(user.email(), user.name(), request.getCallbackUrl() + "?token=" + token);
         });
@@ -157,25 +110,82 @@ public class AuthService {
     @Transactional(rollbackFor = Exception.class)
     public LoginResponse verifyMagicLink(MagicLinkVerifyRequest request, String userAgent, String ipAddress) {
         MagicLinkPending pending = magicLinkTokenService.verifyAndConsume(request.getToken());
+        return createSession(pending.userId(), userAgent, ipAddress);
+    }
 
-        UserProfile user = userQueryService.findProfileById(pending.userId());
-        List<String> roles = permissionChecker.getGlobalRoleNames(user.id());
-        List<String> permissions = permissionChecker.getExpandedPermissions(user.id());
+    public SessionResponse getSessionInfo(String signedToken) {
+        String rawToken = tokenService.verifyToken(signedToken);
+        if (rawToken == null) throw new AppException(ErrorCode.SESSION_NOT_FOUND);
 
-        String rawRefreshToken = generateRefreshToken();
+        String tokenHash = sha256(rawToken);
+        Session session = sessionRepository.findByRefreshTokenHash(tokenHash)
+                .orElseThrow(() -> new AppException(ErrorCode.SESSION_NOT_FOUND));
+
+        if (session.getRevokedAt() != null || session.getExpiresAt().isBefore(Instant.now())) {
+            throw new AppException(ErrorCode.SESSION_NOT_FOUND);
+        }
+
+        sessionExtendService.extendIfNeeded(session);
+
+        SessionCachePayload payload = sessionExtendService.buildPayload(session);
+        String newSessionData = tokenService.signSessionData(payload);
+
+        UserProfile user = userQueryService.findProfileById(session.getUserId());
+        long expiresIn = Instant.now().until(session.getExpiresAt(), java.time.temporal.ChronoUnit.SECONDS);
+
+        return new SessionResponse(
+                newSessionData,
+                signedToken,
+                expiresIn,
+                user,
+                payload.roles(),
+                payload.permissions()
+        );
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void logout(String signedToken) {
+        String rawToken = tokenService.verifyToken(signedToken);
+        if (rawToken == null) return;
+
+        String tokenHash = sha256(rawToken);
+        sessionRepository.findByRefreshTokenHash(tokenHash).ifPresent(session -> {
+            session.setRevokedAt(Instant.now());
+            sessionRepository.save(session);
+        });
+    }
+
+    // ─── Shared session creation ───────────────────────────────────────────────
+
+    public LoginResponse createSession(Long userId, String userAgent, String ipAddress) {
+        UserProfile user = userQueryService.findProfileById(userId);
+        List<String> roles = permissionChecker.getGlobalRoleNames(userId);
+        List<String> permissions = permissionChecker.getExpandedPermissions(userId);
+
+        String rawToken = tokenService.generateRawToken();
+        String tokenHash = sha256(rawToken);
+
         Session session = sessionRepository.save(Session.builder()
-                .userId(user.id())
-                .refreshTokenHash(hashToken(rawRefreshToken))
+                .userId(userId)
+                .refreshTokenHash(tokenHash)
                 .deviceUserAgent(userAgent)
                 .ipAddress(ipAddress)
-                .expiresAt(Instant.now().plusSeconds(jwtProperties.refreshTokenExpiry()))
+                .expiresAt(Instant.now().plusSeconds(sessionProps.expiresIn()))
                 .build());
 
-        String accessToken = jwtService.generateAccessToken(
-                user.id(), session.getId(), user.email(), user.name(), permissions);
+        String signedToken = tokenService.signToken(rawToken);
 
-        return new LoginResponse(accessToken, rawRefreshToken, jwtProperties.accessTokenExpiry(), user, roles, permissions);
+        String version = String.valueOf(session.getUpdatedAt() != null
+                ? session.getUpdatedAt().toEpochMilli()
+                : session.getCreatedAt().toEpochMilli());
+        SessionCachePayload cachePayload = new SessionCachePayload(
+                userId, user.email(), user.name(), roles, permissions, version, 0L);
+        String sessionData = tokenService.signSessionData(cachePayload);
+
+        return new LoginResponse(signedToken, sessionData, sessionProps.expiresIn(), user, roles, permissions);
     }
+
+    // ─── Utilities ─────────────────────────────────────────────────────────────
 
     private CredentialAccount resolveCredentialAccount(String identifier) {
         if (identifier.contains("@")) {
@@ -188,16 +198,10 @@ public class AuthService {
                 .orElseThrow(() -> new AppException(ErrorCode.INVALID_CREDENTIALS));
     }
 
-    private String generateRefreshToken() {
-        byte[] bytes = new byte[32];
-        new SecureRandom().nextBytes(bytes);
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
-    }
-
-    private String hashToken(String rawToken) {
+    private String sha256(String input) {
         try {
             byte[] hash = MessageDigest.getInstance("SHA-256")
-                    .digest(rawToken.getBytes(StandardCharsets.UTF_8));
+                    .digest(input.getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(hash);
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException(e);

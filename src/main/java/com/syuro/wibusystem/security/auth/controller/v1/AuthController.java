@@ -2,6 +2,7 @@ package com.syuro.wibusystem.security.auth.controller.v1;
 
 import com.syuro.wibusystem.security.auth.dto.*;
 import com.syuro.wibusystem.security.auth.service.AuthService;
+import com.syuro.wibusystem.security.rsa.RsaKeyService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -9,12 +10,20 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/v1/auth")
 @RequiredArgsConstructor
 public class AuthController {
 
     private final AuthService authService;
+    private final RsaKeyService rsaKeyService;
+
+    @GetMapping("/public-key")
+    public ResponseEntity<Map<String, String>> getPublicKey() {
+        return ResponseEntity.ok(Map.of("public_key", rsaKeyService.getPublicKeyBase64()));
+    }
 
     @PostMapping("/register")
     public ResponseEntity<RegisterResponse> register(@Valid @RequestBody RegisterRequest request) {
@@ -35,13 +44,17 @@ public class AuthController {
         return ResponseEntity.ok(authService.login(request, userAgent, ip));
     }
 
-    @PostMapping("/refresh")
-    public ResponseEntity<RefreshResponse> refresh(
-            @Valid @RequestBody RefreshRequest request,
-            HttpServletRequest httpRequest) {
-        String userAgent = httpRequest.getHeader("User-Agent");
-        String ip = resolveClientIp(httpRequest);
-        return ResponseEntity.ok(authService.refresh(request, userAgent, ip));
+    @GetMapping("/session")
+    public ResponseEntity<SessionResponse> getSession(
+            @RequestHeader("X-Session-Token") String signedToken) {
+        return ResponseEntity.ok(authService.getSessionInfo(signedToken));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(
+            @RequestHeader(value = "X-Session-Token", required = false) String signedToken) {
+        authService.logout(signedToken);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/magic-link/send")
