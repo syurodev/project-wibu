@@ -1,6 +1,6 @@
 package com.syuro.wibusystem.security.session.filter;
 
-import com.syuro.wibusystem.security.session.dto.SessionCachePayload;
+import com.syuro.wibusystem.security.session.api.SessionCachePayload;
 import com.syuro.wibusystem.security.session.repository.SessionRepository;
 import com.syuro.wibusystem.security.session.service.SessionExtendService;
 import com.syuro.wibusystem.security.session.service.SessionTokenService;

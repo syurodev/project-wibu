@@ -26,18 +26,18 @@ public class PeopleService {
 
     @Transactional(readOnly = true)
     public Page<PeopleResponse> list(Pageable pageable) {
-        return peopleRepository.findAll(pageable).map(this::toResponse);
+        return peopleRepository.findAll(pageable).map(PeopleResponse::from);
     }
 
     @Transactional(readOnly = true)
     public PeopleResponse getById(Long id) {
-        return toResponse(findById(id));
+        return PeopleResponse.from(findById(id));
     }
 
     @Transactional(readOnly = true)
     public PeopleResponse getBySlug(String slug) {
         return peopleRepository.findBySlug(slug)
-                .map(this::toResponse)
+                .map(PeopleResponse::from)
                 .orElseThrow(() -> new AppException(ErrorCode.PEOPLE_NOT_FOUND));
     }
 
@@ -54,7 +54,7 @@ public class PeopleService {
                 .birthday(request.getBirthday())
                 .slug(request.getSlug())
                 .build();
-        return toResponse(peopleRepository.save(people));
+        return PeopleResponse.from(peopleRepository.save(people));
     }
 
     @Transactional
@@ -79,7 +79,7 @@ public class PeopleService {
         if (request.getBirthday() != null) {
             people.setBirthday(request.getBirthday());
         }
-        return toResponse(peopleRepository.save(people));
+        return PeopleResponse.from(peopleRepository.save(people));
     }
 
     @Transactional
@@ -102,17 +102,4 @@ public class PeopleService {
         }
     }
 
-    private PeopleResponse toResponse(People people) {
-        return new PeopleResponse(
-                people.getId(),
-                people.getNames(),
-                people.getBiographies(),
-                people.getAvatar(),
-                people.getBirthday(),
-                people.getSlug(),
-                people.getViewCount(),
-                people.getCreatedAt(),
-                people.getUpdatedAt()
-        );
-    }
 }

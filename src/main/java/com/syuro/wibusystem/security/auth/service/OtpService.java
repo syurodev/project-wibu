@@ -20,11 +20,11 @@ public class OtpService {
     private final RedisTemplate<String, Object> sessionRedisTemplate;
     private final SecureRandom secureRandom = new SecureRandom();
 
-    public String generateAndStore(String userId, String email, String name, String passwordHash) {
+    public String generateAndStore(String userId, String email, String name, String passwordHash, String language) {
         String otp = String.format("%06d", secureRandom.nextInt(1_000_000));
         sessionRedisTemplate.opsForValue().set(
                 KEY_PREFIX + userId,
-                new PendingRegistration(otp, email, name, passwordHash),
+                new PendingRegistration(otp, email, name, passwordHash, language),
                 TTL
         );
         return otp;

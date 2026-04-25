@@ -26,8 +26,10 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<RegisterResponse> register(@Valid @RequestBody RegisterRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(authService.register(request));
+    public ResponseEntity<RegisterResponse> register(
+            @Valid @RequestBody RegisterRequest request,
+            HttpServletRequest httpRequest) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(authService.register(request, httpRequest));
     }
 
     @PostMapping("/verify-otp")

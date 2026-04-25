@@ -8,6 +8,8 @@ import com.syuro.wibusystem.rbac.repository.GlobalPermissionRepository;
 import com.syuro.wibusystem.rbac.repository.GlobalRolePermissionRepository;
 import com.syuro.wibusystem.rbac.repository.GlobalRoleRepository;
 import com.syuro.wibusystem.rbac.repository.UserGlobalRoleRepository;
+import com.syuro.wibusystem.shared.exception.AppException;
+import com.syuro.wibusystem.shared.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -66,6 +68,30 @@ public class PermissionChecker {
     @Transactional(readOnly = true)
     public boolean hasPermission(Long userId, String permission) {
         return getExpandedPermissions(userId).contains(permission);
+    }
+
+    /** Kiểm tra user có ít nhất một trong các role đã cho không. */
+    @Transactional(readOnly = true)
+    public boolean hasAnyRole(Long userId, String... roleNames) {
+        List<String> userRoles = getGlobalRoleNames(userId);
+        for (String role : roleNames) {
+            if (userRoles.contains(role)) return true;
+        }
+        return false;
+    }
+
+    /** Throw FORBIDDEN nếu user không có permission. */
+    @Transactional(readOnly = true)
+    public void requirePermission(Long userId, String permission) {
+        if (!hasPermission(userId, permission))
+            throw new AppException(ErrorCode.FORBIDDEN);
+    }
+
+    /** Throw FORBIDDEN nếu user không có ít nhất một trong các role đã cho. */
+    @Transactional(readOnly = true)
+    public void requireAnyRole(Long userId, String... roleNames) {
+        if (!hasAnyRole(userId, roleNames))
+            throw new AppException(ErrorCode.FORBIDDEN);
     }
 
     /**

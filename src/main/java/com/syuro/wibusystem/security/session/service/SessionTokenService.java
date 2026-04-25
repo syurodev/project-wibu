@@ -1,11 +1,11 @@
 package com.syuro.wibusystem.security.session.service;
 
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
+import com.syuro.wibusystem.security.session.api.SessionCachePayload;
 import com.syuro.wibusystem.security.session.config.SessionProperties;
-import com.syuro.wibusystem.security.session.dto.SessionCachePayload;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -137,7 +137,9 @@ public class SessionTokenService {
         }
     }
 
-    /** Constant-time comparison để chống timing attack */
+    /**
+     * Constant-time comparison để chống timing attack
+     */
     private boolean constantTimeEquals(String a, String b) {
         if (a == null || b == null) return false;
         byte[] ab = a.getBytes(StandardCharsets.UTF_8);

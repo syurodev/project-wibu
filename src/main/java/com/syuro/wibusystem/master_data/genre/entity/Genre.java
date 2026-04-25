@@ -31,6 +31,8 @@ public class Genre extends BaseEntity {
     @Column(name = "view_count", columnDefinition = "bigint default 0", comment = "đếm số view của thể loại")
     private long viewCount = 0L;
 
+    private int totalWorks = 0;
+
     @Column(name = "slug", nullable = false, unique = true)
     private String slug;
 }

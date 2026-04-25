@@ -44,4 +44,7 @@ public class People extends BaseEntity {
     @Column(columnDefinition = "jsonb", nullable = false, comment = "lưu dạng đa ngôn ngữ như title")
     @Builder.Default
     private Map<String, String> biographies = new HashMap<>();
+
+    private int totalWorks = 0;
+    
 }

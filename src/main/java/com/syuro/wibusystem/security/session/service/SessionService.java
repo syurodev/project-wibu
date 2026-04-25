@@ -23,14 +23,7 @@ public class SessionService {
         Instant now = Instant.now();
         return sessionRepository.findAllByUserIdAndRevokedAtIsNull(userId).stream()
                 .filter(s -> s.getExpiresAt().isAfter(now))
-                .map(s -> new SessionResponse(
-                        s.getId(),
-                        s.getDeviceUserAgent(),
-                        s.getIpAddress(),
-                        s.getCreatedAt(),
-                        s.getExpiresAt(),
-                        s.getId().equals(currentSessionId)
-                ))
+                .map(s -> SessionResponse.from(s, currentSessionId))
                 .toList();
     }
 

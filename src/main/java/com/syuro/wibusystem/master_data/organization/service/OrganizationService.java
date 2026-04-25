@@ -26,18 +26,18 @@ public class OrganizationService {
 
     @Transactional(readOnly = true)
     public Page<OrganizationResponse> list(Pageable pageable) {
-        return organizationRepository.findAll(pageable).map(this::toResponse);
+        return organizationRepository.findAll(pageable).map(OrganizationResponse::from);
     }
 
     @Transactional(readOnly = true)
     public OrganizationResponse getById(Long id) {
-        return toResponse(findById(id));
+        return OrganizationResponse.from(findById(id));
     }
 
     @Transactional(readOnly = true)
     public OrganizationResponse getBySlug(String slug) {
         return organizationRepository.findBySlug(slug)
-                .map(this::toResponse)
+                .map(OrganizationResponse::from)
                 .orElseThrow(() -> new AppException(ErrorCode.ORGANIZATION_NOT_FOUND));
     }
 
@@ -53,7 +53,7 @@ public class OrganizationService {
                 .logo(request.getLogo())
                 .slug(request.getSlug())
                 .build();
-        return toResponse(organizationRepository.save(org));
+        return OrganizationResponse.from(organizationRepository.save(org));
     }
 
     @Transactional
@@ -75,7 +75,7 @@ public class OrganizationService {
         if (request.getLogo() != null) {
             org.setLogo(request.getLogo());
         }
-        return toResponse(organizationRepository.save(org));
+        return OrganizationResponse.from(organizationRepository.save(org));
     }
 
     @Transactional
@@ -98,16 +98,4 @@ public class OrganizationService {
         }
     }
 
-    private OrganizationResponse toResponse(Organization org) {
-        return new OrganizationResponse(
-                org.getId(),
-                org.getNames(),
-                org.getBiographies(),
-                org.getLogo(),
-                org.getSlug(),
-                org.getViewCount(),
-                org.getCreatedAt(),
-                org.getUpdatedAt()
-        );
-    }
 }

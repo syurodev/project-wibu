@@ -6,7 +6,9 @@ import tools.jackson.databind.ser.std.ToStringSerializer;
 import java.time.Instant;
 
 public record PasskeyRegisterCompleteResponse(
-        @JsonSerialize(using = ToStringSerializer.class) Long credentialId,
+        @JsonSerialize(using = ToStringSerializer.class)
+        Long credentialId,
         String friendlyName,
         Instant createdAt
-) {}
+) {
+}

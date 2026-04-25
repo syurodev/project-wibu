@@ -1,13 +1,14 @@
 package com.syuro.wibusystem.security.auth.service;
 
+import com.syuro.wibusystem.creator.api.CreatorQueryService;
 import com.syuro.wibusystem.mail.api.MailService;
 import com.syuro.wibusystem.rbac.api.GlobalRoleName;
 import com.syuro.wibusystem.rbac.api.PermissionChecker;
 import com.syuro.wibusystem.rbac.api.RbacCommandService;
 import com.syuro.wibusystem.security.auth.dto.*;
 import com.syuro.wibusystem.security.rsa.RsaKeyService;
+import com.syuro.wibusystem.security.session.api.SessionCachePayload;
 import com.syuro.wibusystem.security.session.config.SessionProperties;
-import com.syuro.wibusystem.security.session.dto.SessionCachePayload;
 import com.syuro.wibusystem.security.session.entity.Session;
 import com.syuro.wibusystem.security.session.repository.SessionRepository;
 import com.syuro.wibusystem.security.session.service.SessionExtendService;
@@ -16,6 +17,7 @@ import com.syuro.wibusystem.shared.exception.AppException;
 import com.syuro.wibusystem.shared.exception.ErrorCode;
 import com.syuro.wibusystem.shared.id.SnowflakeGenerator;
 import com.syuro.wibusystem.user.api.*;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -46,18 +48,22 @@ public class AuthService {
     private final OtpService otpService;
     private final MailService mailService;
     private final MagicLinkTokenService magicLinkTokenService;
+    private final CreatorQueryService creatorQueryService;
 
-    public RegisterResponse register(RegisterRequest request) {
+    public RegisterResponse register(RegisterRequest request, HttpServletRequest httpRequest) {
         if (userQueryService.existsByEmail(request.getEmail())) {
             throw new AppException(ErrorCode.EMAIL_ALREADY_IN_USE);
         }
 
         String userId = String.valueOf(SnowflakeGenerator.nextId());
+        String language = resolveLanguage(httpRequest.getHeader("Accept-Language"));
+        String plainPassword = rsaKeyService.decrypt(request.getPassword());
         String otp = otpService.generateAndStore(
                 userId,
                 request.getEmail(),
                 request.getName(),
-                passwordEncoder.encode(request.getPassword())
+                passwordEncoder.encode(plainPassword),
+                language
         );
 
         mailService.sendOtpEmail(request.getEmail(), request.getName(), otp);
@@ -77,6 +83,7 @@ public class AuthService {
                 pending.name(),
                 pending.email(),
                 pending.passwordHash(),
+                pending.language(),
                 true
         );
 
@@ -139,7 +146,8 @@ public class AuthService {
                 expiresIn,
                 user,
                 payload.roles(),
-                payload.permissions()
+                payload.permissions(),
+                payload.creatorProfileId()
         );
     }
 
@@ -175,14 +183,16 @@ public class AuthService {
 
         String signedToken = tokenService.signToken(rawToken);
 
+        Long creatorProfileId = creatorQueryService.findIdByUserId(userId);
+
         String version = String.valueOf(session.getUpdatedAt() != null
                 ? session.getUpdatedAt().toEpochMilli()
                 : session.getCreatedAt().toEpochMilli());
         SessionCachePayload cachePayload = new SessionCachePayload(
-                userId, user.email(), user.name(), roles, permissions, version, 0L);
+                userId, user.email(), user.name(), roles, permissions, version, 0L, creatorProfileId);
         String sessionData = tokenService.signSessionData(cachePayload);
 
-        return new LoginResponse(signedToken, sessionData, sessionProps.expiresIn(), user, roles, permissions);
+        return new LoginResponse(signedToken, sessionData, sessionProps.expiresIn(), user, roles, permissions, creatorProfileId);
     }
 
     // ─── Utilities ─────────────────────────────────────────────────────────────
@@ -196,6 +206,15 @@ public class AuthService {
                 .orElseThrow(() -> new AppException(ErrorCode.INVALID_CREDENTIALS));
         return accountQueryService.findCredentialByUserId(user.id())
                 .orElseThrow(() -> new AppException(ErrorCode.INVALID_CREDENTIALS));
+    }
+
+    /**
+     * Parse Accept-Language header — chỉ hỗ trợ "en" và "vi", còn lại mặc định "en"
+     */
+    private String resolveLanguage(String acceptLanguage) {
+        if (acceptLanguage == null || acceptLanguage.isBlank()) return "en";
+        String primary = acceptLanguage.split("[,;]")[0].trim().toLowerCase();
+        return primary.startsWith("vi") ? "vi" : "en";
     }
 
     private String sha256(String input) {

@@ -25,18 +25,18 @@ public class GenreService {
 
     @Transactional(readOnly = true)
     public Page<GenreResponse> list(Pageable pageable) {
-        return genreRepository.findAll(pageable).map(this::toResponse);
+        return genreRepository.findAll(pageable).map(GenreResponse::from);
     }
 
     @Transactional(readOnly = true)
     public GenreResponse getById(Long id) {
-        return toResponse(findById(id));
+        return GenreResponse.from(findById(id));
     }
 
     @Transactional(readOnly = true)
     public GenreResponse getBySlug(String slug) {
         return genreRepository.findBySlug(slug)
-                .map(this::toResponse)
+                .map(GenreResponse::from)
                 .orElseThrow(() -> new AppException(ErrorCode.GENRE_NOT_FOUND));
     }
 
@@ -50,7 +50,7 @@ public class GenreService {
                 .titles(request.getTitles())
                 .slug(request.getSlug())
                 .build();
-        return toResponse(genreRepository.save(genre));
+        return GenreResponse.from(genreRepository.save(genre));
     }
 
     @Transactional
@@ -66,7 +66,7 @@ public class GenreService {
         if (request.getTitles() != null) {
             genre.setTitles(request.getTitles());
         }
-        return toResponse(genreRepository.save(genre));
+        return GenreResponse.from(genreRepository.save(genre));
     }
 
     @Transactional
@@ -89,14 +89,4 @@ public class GenreService {
         }
     }
 
-    private GenreResponse toResponse(Genre genre) {
-        return new GenreResponse(
-                genre.getId(),
-                genre.getTitles(),
-                genre.getSlug(),
-                genre.getViewCount(),
-                genre.getCreatedAt(),
-                genre.getUpdatedAt()
-        );
-    }
 }
