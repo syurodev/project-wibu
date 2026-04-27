@@ -10,8 +10,6 @@ import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
-import java.util.HashMap;
-import java.util.Map;
 
 @SuperBuilder
 @NoArgsConstructor
@@ -20,9 +18,9 @@ import java.util.Map;
 @Setter
 @Entity
 @Table(
-    name = "work_localizations",
-    schema = "catalog",
-    uniqueConstraints = @UniqueConstraint(columnNames = {"work_id", "language"})
+        name = "work_localizations",
+        schema = "catalog",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"work_id", "language"})
 )
 @SQLRestriction("deleted_at IS NULL")
 public class WorkLocalization extends BaseEntity {
@@ -37,9 +35,8 @@ public class WorkLocalization extends BaseEntity {
     private String title;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb", comment = "rich text synopsis từ plate editor")
-    @Builder.Default
-    private Map<String, Object> synopsis = new HashMap<>();
+    @Column(columnDefinition = "jsonb", comment = "rich text synopsis từ plate editor dạng JSON string")
+    private String synopsis;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20, comment = "APPROVED tự động nếu là localization của original_language")
@@ -63,4 +60,7 @@ public class WorkLocalization extends BaseEntity {
 
     @Column(length = 1000, comment = "lý do từ chối")
     private String rejectionReason;
+
+    @Column(nullable = false, comment = "Đánh dấu đây là bản gốc")
+    private boolean isOriginal = false;
 }

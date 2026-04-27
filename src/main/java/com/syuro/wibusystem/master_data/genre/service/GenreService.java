@@ -24,8 +24,11 @@ public class GenreService {
     private final PermissionChecker permissionChecker;
 
     @Transactional(readOnly = true)
-    public Page<GenreResponse> list(Pageable pageable) {
-        return genreRepository.findAll(pageable).map(GenreResponse::from);
+    public Page<GenreResponse> list(String q, Pageable pageable) {
+        if (q == null || q.isBlank()) {
+            return genreRepository.findAll(pageable).map(GenreResponse::from);
+        }
+        return genreRepository.search(q.trim(), pageable).map(GenreResponse::from);
     }
 
     @Transactional(readOnly = true)

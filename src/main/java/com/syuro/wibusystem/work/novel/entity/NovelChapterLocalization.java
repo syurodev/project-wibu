@@ -10,8 +10,6 @@ import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
-import java.util.HashMap;
-import java.util.Map;
 
 @SuperBuilder
 @NoArgsConstructor
@@ -37,9 +35,8 @@ public class NovelChapterLocalization extends BaseEntity {
     private String title;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb", comment = "rich text từ plate editor")
-    @Builder.Default
-    private Map<String, Object> content = new HashMap<>();
+    @Column(columnDefinition = "jsonb", comment = "rich text từ plate editor dạng JSON string")
+    private String content;
 
     private Integer wordCount;
 

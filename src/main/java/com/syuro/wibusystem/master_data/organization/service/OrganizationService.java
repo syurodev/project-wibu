@@ -25,8 +25,11 @@ public class OrganizationService {
     private final PermissionChecker permissionChecker;
 
     @Transactional(readOnly = true)
-    public Page<OrganizationResponse> list(Pageable pageable) {
-        return organizationRepository.findAll(pageable).map(OrganizationResponse::from);
+    public Page<OrganizationResponse> list(String q, Pageable pageable) {
+        if (q == null || q.isBlank()) {
+            return organizationRepository.findAll(pageable).map(OrganizationResponse::from);
+        }
+        return organizationRepository.search(q.trim(), pageable).map(OrganizationResponse::from);
     }
 
     @Transactional(readOnly = true)

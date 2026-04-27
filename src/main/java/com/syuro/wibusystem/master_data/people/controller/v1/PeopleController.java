@@ -21,8 +21,10 @@ public class PeopleController {
     private final PeopleService peopleService;
 
     @GetMapping
-    public ResponseEntity<Page<PeopleResponse>> list(Pageable pageable) {
-        return ResponseEntity.ok(peopleService.list(pageable));
+    public ResponseEntity<Page<PeopleResponse>> list(
+            @RequestParam(required = false) String q,
+            Pageable pageable) {
+        return ResponseEntity.ok(peopleService.list(q, pageable));
     }
 
     @GetMapping("/{id}")

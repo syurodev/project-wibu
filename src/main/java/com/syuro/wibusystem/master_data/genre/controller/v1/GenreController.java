@@ -21,8 +21,10 @@ public class GenreController {
     private final GenreService genreService;
 
     @GetMapping
-    public ResponseEntity<Page<GenreResponse>> list(Pageable pageable) {
-        return ResponseEntity.ok(genreService.list(pageable));
+    public ResponseEntity<Page<GenreResponse>> list(
+            @RequestParam(required = false) String q,
+            Pageable pageable) {
+        return ResponseEntity.ok(genreService.list(q, pageable));
     }
 
     @GetMapping("/{id}")

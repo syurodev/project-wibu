@@ -21,8 +21,10 @@ public class OrganizationController {
     private final OrganizationService organizationService;
 
     @GetMapping
-    public ResponseEntity<Page<OrganizationResponse>> list(Pageable pageable) {
-        return ResponseEntity.ok(organizationService.list(pageable));
+    public ResponseEntity<Page<OrganizationResponse>> list(
+            @RequestParam(required = false) String q,
+            Pageable pageable) {
+        return ResponseEntity.ok(organizationService.list(q, pageable));
     }
 
     @GetMapping("/{id}")

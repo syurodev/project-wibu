@@ -25,8 +25,11 @@ public class PeopleService {
     private final PermissionChecker permissionChecker;
 
     @Transactional(readOnly = true)
-    public Page<PeopleResponse> list(Pageable pageable) {
-        return peopleRepository.findAll(pageable).map(PeopleResponse::from);
+    public Page<PeopleResponse> list(String q, Pageable pageable) {
+        if (q == null || q.isBlank()) {
+            return peopleRepository.findAll(pageable).map(PeopleResponse::from);
+        }
+        return peopleRepository.search(q.trim(), pageable).map(PeopleResponse::from);
     }
 
     @Transactional(readOnly = true)
